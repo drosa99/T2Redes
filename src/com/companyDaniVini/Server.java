@@ -64,7 +64,7 @@ public class Server extends Thread {
 
 					// create a new SenderTFTP object and start the sending process
 					SenderTFTP sender = new SenderTFTP(address, port, fileData, serverSocket);
-					sender.send();
+					sender.send(1, 1);
 
 				} catch (Exception e) {
 					System.out.println(e);
