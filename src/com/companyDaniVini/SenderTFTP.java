@@ -25,6 +25,8 @@ public class SenderTFTP {
     public int block;
     public int bytesRead;
     public long crc;
+    public int ackTriplicado;
+    public List<byte[]> arquivo = new ArrayList<>();
 
     public SenderTFTP(InetAddress address, int port, DataInputStream fileData, DatagramSocket senderSocket) {
         this.senderSocket = senderSocket;
@@ -35,13 +37,13 @@ public class SenderTFTP {
         this.ack = 0;
         this.block = 1;
         this.crc = 0L;
+        this.ackTriplicado = 0;
     }
 
     public void send() {
 
         try {
             //fazer matriz com bytes
-            List<byte[]> arquivo = new ArrayList<>();
             byte[] arquivoBytes = fileData.readAllBytes();
 
             int i = 0;
@@ -58,6 +60,7 @@ public class SenderTFTP {
                 packet = new DatagramPacket(it, it.length, address, port);
                 try {
                     sendWithTimeout(packet);
+
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -78,22 +81,17 @@ public class SenderTFTP {
 
     public void sendWithTimeout(DatagramPacket packet) throws Exception {
 
-        // make packet for acks
-//        byte[] ackBytes = new byte[2];
-//        ackBytes = Integer.toString(ack).getBytes();
-//        ackPacket = new DatagramPacket(ackBytes, ackBytes.length);
-
         try {
             senderSocket.setSoTimeout(500);
         } catch (Exception e) { }
 
         // set timeout to 500 ms
-        int retry = 0;
-        int ackRetry = 0;
+        boolean retry = true;
 
-        while(retry < 3) {
+        while(retry) {
             try {
                 // try to send the packet
+                System.out.println("Enviando pacote: " + block);
                 senderSocket.send(packet);
 
                 // wait around to receive a packet -- timeout could occur
@@ -104,38 +102,35 @@ public class SenderTFTP {
                 senderSocket.receive(ackPacket);
 
 
-                if (ackPacket.getPort() != port) {  // packet came from foreign port
-                    // send an error packet to the foreign source
-                    byte[] errorData = PacketTFTP.makeErrorData(5, "Unknown transfer ID.");
-                    DatagramPacket errorPacket = new DatagramPacket(errorData, errorData.length, ackPacket.getAddress(), ackPacket.getPort());
-                    senderSocket.send(errorPacket);
-
-                    // disregard packet and resend previous
-                    continue;
-                }
-
-                //TODO TIRAR ACK DAQUI E COLOCAR PRA FORA
-                // got ACK, check to make sure block number is correct
                 String ackPacketData = new String(ackPacket.getData()).trim();
-                ack = Integer.parseInt(ackPacketData);
+                int ackRecebido = Integer.parseInt(ackPacketData);
 
-                System.out.println("Recebeu ack " + ack);
-
-                //TODO aqui manda novamente o pacote que ele ta pedindo
-                if (ackRetry == 3) {
-                    System.out.println("3 INCORRECT ACKS -- EXITING");
-                    System.exit(1);
+                System.out.println("Recebeu ack " + ackRecebido);
+                if(ackRecebido - 1 == block){
+                    block ++;
+                    this.ack = ackRecebido;
+                    retry = false;
+                } else {
+                    //se o ack recebido eh o mesmo que foi recebido da ultima vez aumenta o contador de repeticao
+                    if(ackRecebido == ack){
+                        ackTriplicado ++;
+                    } else {
+                        //se o ack recebido eh diferente do que foi recebido na ultima vez, seta o ultimo ack e limpa o contador de repeticoes
+                        this.ack = ackRecebido;
+                        ackTriplicado = 0;
+                    }
+                    retry = false;
                 }
 
-                // made it all the way through without timing out and correct
-                // block #
-                break;
+                if(ackTriplicado == 3){
+                    retry = true;
+                    packet.setData(arquivo.get(ack));
+                }
+
 
             } catch (SocketTimeoutException e) {
-                System.out.println("TIMEOUT FROM SENDER");
-                System.out.println(e);
-                retry++;
-                break;
+                System.err.println("Timeout, vai enviar o bloc: " + block);
+                retry = true;
             }
         }
     }

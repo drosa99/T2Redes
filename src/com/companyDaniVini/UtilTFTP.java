@@ -27,8 +27,8 @@ public class UtilTFTP {
 	}
 
 	public static boolean checkCRC(byte[] bay){
-		String mensagem = new String(bay);
-		System.out.println(mensagem + "\n");
+		//String mensagem = new String(bay);
+		//System.out.println(mensagem + "\n");
 		byte[] crcBytes = Arrays.copyOfRange(bay, 4, 14);
 		//mensagem = mensagem.split("CRC:")[1];
 		//String[] split = mensagem.split("Dados:");

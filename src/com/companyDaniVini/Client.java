@@ -32,7 +32,7 @@ public class Client {
 		try {
 			// prepare the RRQ data to send to server
 			// populates bay with [01][fileName][0][octet][0]
-			ClientTFTP.prepareDataRRQ(bay, fileName, "octet");
+			Client.prepareDataRRQ(bay, fileName, "octet");
 
 			// first block receiver plans to receive is 1
 			block = 1;

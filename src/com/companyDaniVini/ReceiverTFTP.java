@@ -28,7 +28,6 @@ public class ReceiverTFTP {
 		this.port = port;
 		this.ipAddr = ipAddr;
 		this.ack = 2;
-		//todo mudar o tamanho quando botar o crc
 		this.bay = new byte[526];
 		this.ackPkt = new DatagramPacket(Integer.toString(ack).getBytes(), Integer.toString(ack).getBytes().length, ipAddr, port);
 		this.blockNum = block;
@@ -46,7 +45,6 @@ public class ReceiverTFTP {
 				skt.receive(pkt);
 				bay = pkt.getData();
 				this.blockNum = ReceiverUtils.handlePacket(skt, pkt, fileOutput, ipAddr, port, blockNum, packetSize);
-				System.out.println("ja foram blocos: " + blockNum);
 				} catch (SocketTimeoutException ex) {
 					break;
 
@@ -54,7 +52,7 @@ public class ReceiverTFTP {
 			}   // quit once a packet of has less than 512 bytes of data
 
 			fileOutput.close();
-			UtilTFTP.puts("Transfer ended");
+			System.out.println("Transfencia concluida");
 		} catch (Exception e) {
 			System.out.println(e);
 		}
@@ -71,13 +69,11 @@ class ReceiverUtils{
 		System.out.println("Ultimo bloco processado: " + blockNum);
 		if (checkRightPacket(bay, blockNum)) {
 			// write next 512 bytes to file
-			String mensagem = new String(bay);
-			//mensagem = mensagem.split("Dados:")[1];
 			byte[] mensagemBytes = Arrays.copyOfRange(bay, 14, bay.length);
 			fileOutput.write(mensagemBytes, 0, mensagemBytes.length);
 			// increment to the next block
-			int processBlock = blockNum++;
-			System.out.println("Escreveu bloco: " + processBlock);
+			blockNum++;
+			System.out.println("Escreveu bloco: " + blockNum);
 		}
 
 		// get packet size to make sure it's less that 512 bytes
@@ -95,9 +91,7 @@ class ReceiverUtils{
 	private static boolean checkRightPacket(byte[] bay, int blockNum) {
 		//compara numero do bloco recebido com o numero do bloco que espera receber
 		int sentBlockNumber = PacketTFTP.getBlockNumber(bay);
-
-		UtilTFTP.puts("checkRightPacket: blockNum " + blockNum);
-		UtilTFTP.puts("received packet: " + sentBlockNumber);
+		System.out.println("Recebeu o pacote: " + sentBlockNumber);
 
 		if (sentBlockNumber != blockNum + 1) {
 			return false;
