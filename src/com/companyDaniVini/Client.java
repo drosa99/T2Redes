@@ -26,8 +26,8 @@ public class Client {
 		byte[] bay = new byte[526];
 		String server = "localhost";
 		String request = "read";
-		String fileName = "/Users/daniela/Desktop/Redes/T2Redes-Daniela-ViniciusLima/src/com/companyDaniVini/server/test.jpg";
-		String name = "test.jpg";
+		String fileName = "/Users/daniela/Desktop/Redes/T2Redes-Daniela-ViniciusLima/src/com/companyDaniVini/server/testeHistoria.txt";
+		String name = "testeHistoria.txt";
 
 		try {
 			// prepare the RRQ data to send to server
