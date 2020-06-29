@@ -1,4 +1,6 @@
-package com.companyDaniVini;
+package com.companyDaniVini.client;
+
+import com.companyDaniVini.Util;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -8,7 +10,7 @@ import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.util.Arrays;
 
-public class ReceiverTFTP {
+public class Receiver {
 
     public DatagramSocket skt;
     public DatagramPacket pkt;
@@ -23,7 +25,7 @@ public class ReceiverTFTP {
     public int qntdPacotes;
 
 
-    public ReceiverTFTP(InetAddress ipAddr, int port, DataOutputStream fileOutput, DatagramSocket skt, int block, int qntdPacotes) {
+    public Receiver(InetAddress ipAddr, int port, DataOutputStream fileOutput, DatagramSocket skt, int block, int qntdPacotes) {
         this.skt = skt;
         this.fileOutput = fileOutput;
         this.port = port;
@@ -37,7 +39,7 @@ public class ReceiverTFTP {
     }
 
 
-    // wait for a packet to come and write the contents to outputStream
+    // espera o recebimento dos pacotes
     public void receive() {
 
         try {
@@ -64,6 +66,7 @@ public class ReceiverTFTP {
 
 class ReceiverUtils {
 
+    //metodo que pega um pacote, verifica se deve ser escrito no arquivo ou nao e manda o ack
     public static int handlePacket(DatagramSocket skt, DatagramPacket pkt, DataOutputStream fileOutput, InetAddress ipAddr,
                                    int port, int blockNum, int packetSize) throws IOException {
         //escreve os dados do pacote no arquivo se tiver certo
@@ -89,9 +92,10 @@ class ReceiverUtils {
         return blockNum;
     }
 
+    //metodo que compara se o bloco deve ser escrito no arquivo ou descartado
     private static boolean checkRightPacket(byte[] bay, int blockNum) {
         //compara numero do bloco recebido com o numero do bloco que espera receber
-        int sentBlockNumber = PacketTFTP.getBlockNumber(bay);
+        int sentBlockNumber = Util.getBlockNumber(bay);
         System.out.println("\n Recebeu o pacote: " + sentBlockNumber);
 
         if (sentBlockNumber != blockNum + 1) {
@@ -99,7 +103,7 @@ class ReceiverUtils {
         }
 
         //compara crc32
-        return UtilTFTP.checkCRC(bay);
+        return Util.checkCRC(bay);
     }
 
 }

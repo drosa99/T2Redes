@@ -1,18 +1,19 @@
-package com.companyDaniVini;/*
-  Names: Lee Page, Edward Banner
-  Class: CIS 410 - Networks
-  Assignment: 5
-  Due date: April 18 2012
-*/
+package com.companyDaniVini.server;
 
-import java.net.*;
-import java.io.*;
+import com.companyDaniVini.Util;
+
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-public class SenderTFTP {
+public class Sender {
 
     public DatagramSocket senderSocket;
     public DatagramPacket packet;
@@ -23,18 +24,17 @@ public class SenderTFTP {
     public byte[] bay;
     public int ack;
     public int block;
-    public int bytesRead;
     public long crc;
     public int ackTriplicado;
     public List<byte[]> arquivo = new ArrayList<>();
 
-    public SenderTFTP(InetAddress address, int port, DataInputStream fileData, DatagramSocket senderSocket) {
+    public Sender(InetAddress address, int port, DataInputStream fileData, DatagramSocket senderSocket) {
         this.senderSocket = senderSocket;
         this.fileData = fileData;
         this.port = port;
         this.address = address;
         this.bay = new byte[526];
-        this.ack = 0;
+        this.ack = 1;
         this.block = 1;
         this.crc = 0L;
         this.ackTriplicado = 0;
@@ -43,7 +43,7 @@ public class SenderTFTP {
     public void send() {
 
         try {
-            //pega o arquivo e coloca ele numa lista de byte[]
+            //pega o arquivo e coloca ele numa lista de byte[] cada um contendo 512 bytes,
             byte[] arquivoBytes = fileData.readAllBytes();
 
             int i = 0;
@@ -62,21 +62,22 @@ public class SenderTFTP {
             while (ack < arquivo.size()) {
 
                 //ultimo ack recebido é o proximo que tem que ser mandado
-                int ultimoAckRecebido = ack;
-
+                int ultimoBlockConfimado = ack - 1;
+                System.out.println(" --- ULTIMA ACK " + ack);
                 //block eh o ultimo bloco enviado
                 this.block = Math.max(ack - 1, 1);
                 boolean recomeca = false;
                 for (int j = 0; j < Math.pow(2, slowStart); j++) {
-
-                    if(ultimoAckRecebido + j >= arquivo.size()) {
+                    if(ultimoBlockConfimado + j >= arquivo.size()) {
                         System.out.println("Transferência encerrada.");
                         System.exit(1);
                     }
 
                     // pacote mandado tem que ser o ultimo ack recebido
-                    System.out.println("\n --- Enviando pacote: " + (ultimoAckRecebido + j) + " ---");
-                    packet = new DatagramPacket(arquivo.get(ultimoAckRecebido + j), arquivo.get(ultimoAckRecebido + j).length, address, port);
+                    int nrBlocoVaiEnviar = Util.getBlockNumber(arquivo.get(ultimoBlockConfimado + j));
+                    System.out.println("\n --- Enviando pacote: " + nrBlocoVaiEnviar + " ---");
+                    block = nrBlocoVaiEnviar;
+                    packet = new DatagramPacket(arquivo.get(ultimoBlockConfimado + j), arquivo.get(ultimoBlockConfimado + j).length, address, port);
 
                     // o metodo sendWithTimeout retorna true se houve timeout ou recebimento de 3 acks duplicados
                     // entao o slow start recomeca a partir do ultimo ack recebido e com expoente 0 para o slow start
@@ -84,18 +85,17 @@ public class SenderTFTP {
                     if (recomeca) {
                         slowStart = 0;
                         break;
-                    } else {
-                        //se nao deve recomecar, incrementa a quantidade de blocos enviados
-                        block ++;
                     }
                 }
                 // se mandou nao recomecar e o ultimo ack recebido == ultimo bloco mandado -> entao aumenta o expoente do slow start
-                System.out.println("SLOW START  ack - 1: " + (ack - 1));
-                System.out.println("SLOW START block: " + block + "\n");
+                //System.out.println("SLOW START  ack - 1: " + (ack - 1));
+                //System.out.println("SLOW START block: " + block + "\n");
                 if (!recomeca && ack - 1  == block) {
                     slowStart++;
                     System.out.println(" \n - SLOW START  próximo expoente: " + slowStart + "----- \n");
                 } else {
+                    //System.out.println("SLOW START  ack - 1: " + (ack - 1));
+                    //System.out.println("SLOW START block: " + block + "\n");
                     System.out.println(" \n - SLOW START  recomeçando com expoente 0  ----- \n ");
                     slowStart = 0;
                 }
@@ -153,7 +153,7 @@ public class SenderTFTP {
         } catch (Exception e) {
         }
 
-        boolean retry = true;
+        boolean retry = false;
 
         try {
             // manda o pacote
@@ -169,14 +169,13 @@ public class SenderTFTP {
             int ackRecebido = Integer.parseInt(ackPacketData);
 
             System.out.println("\n Recebeu ack " + ackRecebido);
+
 //            System.out.println("block " + block);
 //            System.out.println("ack " + ack);
 //            System.out.println("ackTriplicado " + ackTriplicado);
 
             //ack confere com o ultimo pacote mandado
             if (ackRecebido - 1 == block) {
-                this.ack = ackRecebido;
-                retry = false;
                 ackTriplicado = 1;
 
             } else {  //ack nao corresponde ao ultimo pacote enviado
@@ -185,11 +184,11 @@ public class SenderTFTP {
                     ackTriplicado++;
                 } else if (ack < ackRecebido) {
                     //se o ack recebido eh diferente do que foi recebido na ultima vez, seta o ultimo ack e limpa o contador de repeticoes
-                    this.ack = ackRecebido;
+                    //this.ack = ackRecebido;
                     ackTriplicado = 1;
                 }
-                retry = false;
             }
+            this.ack = ackRecebido;
 
             //FAST-RETRANSMIT se recebeu 3x o mesmo ack -> deve recomecar o slow start
             if (ackTriplicado == 3) {
@@ -208,7 +207,7 @@ public class SenderTFTP {
     }
 
     public void insertBlockNumber(byte[] bay, int bloco) {
-        // populate data packet byte array with opcode of DATA
+        // popula o pacote com opcode de DATA
         bay[0] = 0;
         bay[1] = 3;
         bay[2] = (byte) (bloco >>> 8);
@@ -223,7 +222,7 @@ public class SenderTFTP {
         buffer.put(bay[2]);
         buffer.put(bay[3]);
         byte[] crcbytes = new byte[10];
-        long crc = UtilTFTP.getCRC(conteudo);
+        long crc = Util.getCRC(conteudo);
         //aqui forca o crc a ter 10 bytes
         crcbytes = Arrays.copyOf(Long.toString(crc).getBytes(), 10);
         buffer.put(crcbytes);

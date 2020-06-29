@@ -1,8 +1,9 @@
-package com.companyDaniVini;
+package com.companyDaniVini.server;
+
+import com.companyDaniVini.Util;
 
 import java.net.*;
 import java.io.*;
-import java.util.*;
 
 public class Server extends Thread {
 
@@ -39,7 +40,7 @@ public class Server extends Thread {
             try {
                 // verifica se o arquivo existe
                 if (!new File(fileName).exists()) {
-                    byte[] errorData = PacketTFTP.makeErrorData(1, "Arquivo não encontrado.");
+                    byte[] errorData = Util.makeErrorData(1, "Arquivo não encontrado.");
                     DatagramPacket errorPacket = new DatagramPacket(errorData, errorData.length, address, port);
                     serverSocket.send(errorPacket);
                     System.exit(1);
@@ -49,7 +50,7 @@ public class Server extends Thread {
                 DataInputStream fileData = new DataInputStream(new FileInputStream(fileName));
 
                 // comeca processo de mandar o arquivo
-                SenderTFTP sender = new SenderTFTP(address, port, fileData, serverSocket);
+                Sender sender = new Sender(address, port, fileData, serverSocket);
                 sender.send();
 
             } catch (Exception e) {

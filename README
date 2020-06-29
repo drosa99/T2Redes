@@ -1,7 +1,9 @@
-Como usar:
+Autores: Daniela Amaral e Vinicius Lima
+T2 Redes de Computadores 01/2020
 
+Como usar:
 Rodar a main respectivamente das classes: Server e Client
-- Os arquivos a serem transferidos deverão estar na pasta server dentro do pacote do projeto
+- Os arquivos a serem transferidos deverão estar na pasta origem dentro do pacote do projeto
 - Os arquivos serão enviados para a pasta destino no root do projeto.
 - O nome do arquivo a ser enviado deve ser passado como argumento para rodar a classe Client. ex: "test.jpg"
 	
