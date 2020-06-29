@@ -78,7 +78,6 @@ class ReceiverUtils {
             System.out.println("Escreveu bloco: " + blockNum);
         }
 
-        // get packet size to make sure it's less that 512 bytes
         packetSize = pkt.getLength();
 
         // mandando ack
@@ -93,7 +92,7 @@ class ReceiverUtils {
     private static boolean checkRightPacket(byte[] bay, int blockNum) {
         //compara numero do bloco recebido com o numero do bloco que espera receber
         int sentBlockNumber = PacketTFTP.getBlockNumber(bay);
-        System.out.println("Recebeu o pacote: " + sentBlockNumber);
+        System.out.println("\n Recebeu o pacote: " + sentBlockNumber);
 
         if (sentBlockNumber != blockNum + 1) {
             return false;
