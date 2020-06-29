@@ -15,7 +15,7 @@ public class Client {
 
 
 		//System.getProperty("user.dir") +
-		final String dir =  "/Users/daniela/Desktop/Redes/T2Redes-Daniela-ViniciusLima/src/com/companyDaniVini";
+		final String dir =  System.getProperty("user.dir") + "/src/com/companyDaniVini";
 		System.out.println("current dir = " + dir);
 
 
@@ -26,8 +26,8 @@ public class Client {
 		byte[] bay = new byte[526];
 		String server = "localhost";
 		String request = "read";
-		String fileName = "/Users/daniela/Desktop/Redes/T2Redes-Daniela-ViniciusLima/src/com/companyDaniVini/server/testeHistoria.txt";
-		String name = "testeHistoria.txt";
+		String fileName = System.getProperty("user.dir") + "/src/com/companyDaniVini/server/test.jpg";
+		String name = "test.jpg";
 
 		try {
 			// prepare the RRQ data to send to server
@@ -45,57 +45,33 @@ public class Client {
 			DatagramPacket pkt = new DatagramPacket(bay, bay.length, ipAddr, port);
 
 
-			cliSkt.setSoTimeout(500);
+			//cliSkt.setSoTimeout(500);
 			cliSkt.send(pkt);
 
 			File file = new File("./destino/" + name);
 			fileOut = new DataOutputStream(new FileOutputStream(file));
 
+			DatagramPacket tampkt = new DatagramPacket(new byte[8], 8, ipAddr, port);
+			cliSkt.receive(tampkt);
 
-			cliSkt.receive(pkt);
+			port = tampkt.getPort();
+			ipAddr = tampkt.getAddress();
+
+			int qntdPacotes = Integer.parseInt(new String(tampkt.getData()).trim());
+			System.out.println("Recebeu a quantidade de pacotes do arquivo: " + qntdPacotes);
 
 
-			port = pkt.getPort();
-			ipAddr = pkt.getAddress();
+			DatagramPacket ackPkt = new DatagramPacket(tampkt.getData(), tampkt.getData().length, ipAddr, port);
+			System.out.println("Vai mandar ACK da quantidade de pacotes do arquivo");
+			cliSkt.send(ackPkt);
+
+			bay = new byte[526];
+			pkt = new DatagramPacket(bay, bay.length, ipAddr, port);
 			int blockNum = ReceiverUtils.handlePacket(cliSkt, pkt, fileOut, ipAddr, port, 0, pkt.getLength());
-		//	bay = pkt.getData();
-
-
-
-			// port for server has changed -- get the new port
-
-
-			// open up a stream for writing
-
-
-
-//			// write the first packet into file
-//			if (pkt.getLength() > 150) {
-//				//fileOut.write(bay, 4, pkt.getLength() - 4);
-//				System.out.println("entrou");
-//				String mensagem = new String(bay);
-//				if(mensagem.split("Dados:").length < 2){
-//					System.out.println("mensagem" + mensagem);
-//				}
-//				mensagem = mensagem.split("Dados:")[1];
-//				byte[] mensagemBytes = mensagem.getBytes();
-//
-//				fileOut.write(mensagemBytes, 0, mensagemBytes.length);
-//			}
-//
-//
-//			// create first ACK with block number 1
-//			byte[] ackbuf = Integer.toString(1).getBytes();
-//			DatagramPacket ackPkt = new DatagramPacket(ackbuf, ackbuf.length, ipAddr, port);
-//			// send the first ACK
-//			UtilTFTP.puts("received packet: " + 1 + " size: " + pkt.getLength());
-//			String ack = new String(ackbuf);
-//			System.out.println("Solicita o ACK " + ack);
-//			cliSkt.send(ackPkt);
 
 			//use receiver instead.
 			if (pkt.getLength() >= 512) {
-				ReceiverTFTP receiver = new ReceiverTFTP(ipAddr, port, fileOut, cliSkt, blockNum);
+				ReceiverTFTP receiver = new ReceiverTFTP(ipAddr, port, fileOut, cliSkt, blockNum, qntdPacotes);
 				receiver.receive();
 			}else{
 				fileOut.close();

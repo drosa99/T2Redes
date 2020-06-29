@@ -121,8 +121,8 @@ public class Server extends Thread {
 				DatagramPacket pkt = new DatagramPacket(buf, buf.length);
 				srv.receive(pkt);
 				buf = pkt.getData();
-				System.out.println("buf " + new String(buf));
-				// create a new thread to handle request and continue listening
+
+				// cria thread pra lidar com as reqs e ficar ouvindo
 				new Server(pkt).run();
 			}
 		} catch (Exception e) {

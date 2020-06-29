@@ -53,7 +53,9 @@ public class SenderTFTP {
                 arquivo.add(montaPacote(a, arquivo.size() + 1));
                 i += 512;
             }
+            System.out.println("\n Arquivo quebrado em:" + arquivo.size() + " pacotes \n");
 
+            sendQntdPacotes();
 
 
             arquivo.forEach(it ->{
@@ -75,9 +77,40 @@ public class SenderTFTP {
         byte[] bay = new byte[526];
         insertBlockNumber(bay, nrBloco);
         bay = insertCRC(bay, segmento);
-        System.out.println("bay " + new String(bay));
+        //System.out.println("bay " + new String(bay));
         return bay;
     }
+
+    public void sendQntdPacotes(){
+        try {
+            senderSocket.setSoTimeout(500);
+        } catch (Exception e) { }
+
+        boolean retry = true;
+        byte[] qntPacotes = Integer.toString(arquivo.size()).getBytes();
+        packet = new DatagramPacket(qntPacotes, qntPacotes.length, address, port);
+        while(retry){
+            System.out.println("Enviando quantidade de pacotes: " + arquivo.size());
+            try{
+                senderSocket.send(packet);
+
+                byte[] ackBytes = new byte[2];
+                ackPacket = new DatagramPacket(ackBytes, ackBytes.length);
+                senderSocket.receive(ackPacket);
+
+                byte[] ackData = ackPacket.getData();
+                System.out.println("Recebeu ack quantidade de pacotes");
+                retry = false;
+                break;
+
+            } catch (SocketTimeoutException e){
+                System.err.println("Timeout para receber ack da quantidade de pacotes... Mandando novamente...");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 
     public void sendWithTimeout(DatagramPacket packet) throws Exception {
 
@@ -105,26 +138,35 @@ public class SenderTFTP {
                 String ackPacketData = new String(ackPacket.getData()).trim();
                 int ackRecebido = Integer.parseInt(ackPacketData);
 
-                System.out.println("Recebeu ack " + ackRecebido);
+                System.out.println("\n Recebeu ack " + ackRecebido);
+                System.out.println("block " + block);
+                System.out.println("ack " + ack);
+                System.out.println("ackTriplicado " + ackTriplicado);
+
                 if(ackRecebido - 1 == block){
-                    block ++;
+                    //block ++;
+                    System.out.println("Entrou 1 if \n");
                     this.ack = ackRecebido;
                     retry = false;
+                    ackTriplicado = 0;
                 } else {
                     //se o ack recebido eh o mesmo que foi recebido da ultima vez aumenta o contador de repeticao
                     if(ackRecebido == ack){
+                        System.out.println("Entrou 2 if \n");
                         ackTriplicado ++;
-                    } else {
+                    } else if(ack < ackRecebido){
                         //se o ack recebido eh diferente do que foi recebido na ultima vez, seta o ultimo ack e limpa o contador de repeticoes
+                        System.out.println("Entrou 3 if \n");
                         this.ack = ackRecebido;
-                        ackTriplicado = 0;
+                        ackTriplicado = 1;
                     }
                     retry = false;
                 }
 
                 if(ackTriplicado == 3){
                     retry = true;
-                    packet.setData(arquivo.get(ack));
+                    System.err.println("Recebeu 3x o ACK:" + ackRecebido);
+                    packet.setData(arquivo.get(ackRecebido - 1));
                 }
 
 
@@ -133,6 +175,7 @@ public class SenderTFTP {
                 retry = true;
             }
         }
+        block ++;
     }
 
     public void insertBlockNumber(byte[] bay, int bloco) {
