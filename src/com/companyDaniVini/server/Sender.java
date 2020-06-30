@@ -184,7 +184,6 @@ public class Sender {
                     ackTriplicado++;
                 } else if (ack < ackRecebido) {
                     //se o ack recebido eh diferente do que foi recebido na ultima vez, seta o ultimo ack e limpa o contador de repeticoes
-                    //this.ack = ackRecebido;
                     ackTriplicado = 1;
                 }
             }
